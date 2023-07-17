@@ -1,0 +1,11 @@
+{
+  "name": "azure-servicebus-insight",
+  "version": "1.0.0",
+  "description": "Azure Service Bus Insight",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Divyesh Sharma",
+  "license": "ISC"
+}
