@@ -1,10 +1,57 @@
-import { Injectable } from '@nestjs/common';
-import { ServiceBusClient } from '@azure/service-bus';
-import { DefaultAzureCredential } from '@azure/identity';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  ServiceBusClient,
+  ServiceBusAdministrationClient,
+} from '@azure/service-bus';
+import config from '../../config/default';
+import Long from 'long';
 
 @Injectable()
 export class MessagesService {
-  azureServiceBusConnectionString = 'connec';
+  async getMessagesWithRuntimeProperties(connectionString) {
+    console.log(connectionString);
+    const serviceBusAdministrationClient = new ServiceBusAdministrationClient(
+      connectionString,
+    );
+
+    const queueData = [];
+    const queuesRuntimeProperties =
+      serviceBusAdministrationClient.listQueuesRuntimeProperties();
+    for await (const queueRuntimeProperty of queuesRuntimeProperties) {
+      console.log('Inside queue ' + queueRuntimeProperty);
+      queueData.push(queueRuntimeProperty);
+    }
+    return queueData;
+  }
+
+  async peekMessages(connectionString, queueName) {
+    const serviceBusAdministrationClient = new ServiceBusAdministrationClient(
+      connectionString,
+    );
+
+    if (await serviceBusAdministrationClient.queueExists(queueName)) {
+      const serviceBusClient = new ServiceBusClient(connectionString);
+
+      const queue = await serviceBusClient.createReceiver(queueName);
+
+      return queue.peekMessages(200);
+    }
+    throw new BadRequestException('Queue ' + queueName + " doesn't exist.");
+  }
+
+  async receiveMessages(connectionString, queueName, sequenceNumbers: Long[]) {
+    const serviceBusAdministrationClient = new ServiceBusAdministrationClient(
+      connectionString,
+    );
+
+    if (await serviceBusAdministrationClient.queueExists(queueName)) {
+      const serviceBusClient = new ServiceBusClient(connectionString);
+      const queue = await serviceBusClient.createReceiver(queueName);
+      await queue.receiveDeferredMessages(sequenceNumbers);
+    }
+    throw new BadRequestException('Queue ' + queueName + " doesn't exist.");
+  }
+
   async createMessages() {
     // Passwordless credential
     const credential = null;
@@ -28,7 +75,7 @@ export class MessagesService {
     async function main() {
       // create a Service Bus client using the passwordless authentication to the Service Bus namespace
       const sbClient = new ServiceBusClient(
-        this.azureServiceBusConnectionString,
+        config.server.serviceBusConnectionString,
         credential,
       );
 
