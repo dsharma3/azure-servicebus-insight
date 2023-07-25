@@ -2,9 +2,11 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import {
   ServiceBusClient,
   ServiceBusAdministrationClient,
+  ServiceBusReceivedMessage,
 } from '@azure/service-bus';
 import config from '../../config/default';
-import Long from 'long';
+import Long from "long";
+import { isTypedArray } from 'util/types';
 
 @Injectable()
 export class MessagesService {
@@ -39,15 +41,49 @@ export class MessagesService {
     throw new BadRequestException('Queue ' + queueName + " doesn't exist.");
   }
 
-  async receiveMessages(connectionString, queueName, sequenceNumbers: Long[]) {
+  async receiveMessages(
+    connectionString,
+    queueName,
+    sequenceNumbers: Long | Long[],
+  ) {
+    const serviceBusAdministrationClient = new ServiceBusAdministrationClient(
+      connectionString,
+    );
+    console.log('sequenceNumbers' + Array.isArray(sequenceNumbers));
+
+    console.log(Long?.fromString('1000023'));
+    if (!Long?.isLong(sequenceNumbers)) {
+      console.log('This is testing');
+      //throw new BadRequestException('This is testing');
+    } else {
+      console.log('This is long');
+    }
+    if (await serviceBusAdministrationClient.queueExists(queueName)) {
+      const serviceBusClient = new ServiceBusClient(connectionString);
+      const queue = await serviceBusClient.createReceiver(queueName);
+      await queue.receiveDeferredMessages(sequenceNumbers);
+    }
+    throw new BadRequestException('Queue ' + queueName + " doesn't exist.");
+  }
+
+  async moveToDeadLetteredQueue(
+    connectionString,
+    queueName,
+    sequenceNumbers: Long[],
+  ) {
     const serviceBusAdministrationClient = new ServiceBusAdministrationClient(
       connectionString,
     );
 
     if (await serviceBusAdministrationClient.queueExists(queueName)) {
       const serviceBusClient = new ServiceBusClient(connectionString);
-      const queue = await serviceBusClient.createReceiver(queueName);
-      await queue.receiveDeferredMessages(sequenceNumbers);
+      const queueReceiver = await serviceBusClient.createReceiver(queueName);
+      const serviceBusMessages = await queueReceiver.receiveDeferredMessages(
+        sequenceNumbers,
+      );
+      for (const message of serviceBusMessages) {
+        await queueReceiver.deadLetterMessage(message);
+      }
     }
     throw new BadRequestException('Queue ' + queueName + " doesn't exist.");
   }

@@ -2,16 +2,16 @@ import {
   BadRequestException,
   Body,
   Controller,
-  Get,
   HttpCode,
   Param,
   Post,
-  Query,
 } from '@nestjs/common';
 import { MessagesService } from './messages.service';
 
 import { ConnectionDto } from './dto/connection.dto';
 import { ReceiveMessagesDto } from './dto/receivemessages.connection.dto';
+import Long from 'Long';
+
 @Controller('')
 export class MessagesController {
   constructor(private messageService: MessagesService) {}
@@ -70,10 +70,63 @@ export class MessagesController {
       queueId == undefined
     )
       return new BadRequestException();
+    console.log('type ' + receiveMessage.SequenceNumber.length);
+    console.log('connectionSecret ' + receiveMessage.connectionSecret);
+
     return await this.messageService.receiveMessages(
       receiveMessage.connectionSecret,
       queueId,
+      receiveMessage.SequenceNumber as Long[],
+    );
+  }
+
+  @Post('queues/:id/deadletter')
+  @HttpCode(200)
+  @HttpCode(400)
+  @HttpCode(401)
+  async moveMessageToDeadLettered(
+    @Param('id') queueId: string,
+    @Body() receiveMessage: ReceiveMessagesDto,
+  ) {
+    if (
+      receiveMessage == null ||
+      receiveMessage == undefined ||
+      queueId == null ||
+      queueId == undefined
+    )
+      return new BadRequestException();
+    console.log('type ' + receiveMessage.SequenceNumber.length);
+    console.log('connectionSecret ' + receiveMessage.connectionSecret);
+
+    return await this.messageService.moveToDeadLetteredQueue(
+      receiveMessage.connectionSecret,
+      queueId,
       receiveMessage.SequenceNumber,
+    );
+  }
+
+  @Post('queues/:id/export')
+  @HttpCode(200)
+  @HttpCode(400)
+  @HttpCode(401)
+  async exportToJson(
+    @Param('id') queueId: string,
+    @Body() receiveMessage: ReceiveMessagesDto,
+  ) {
+    if (
+      receiveMessage == null ||
+      receiveMessage == undefined ||
+      queueId == null ||
+      queueId == undefined
+    )
+      return new BadRequestException();
+    console.log('type ' + receiveMessage.SequenceNumber.length);
+    console.log('connectionSecret ' + receiveMessage.connectionSecret);
+
+    return await this.messageService.moveToDeadLetteredQueue(
+      receiveMessage.connectionSecret,
+      queueId,
+      receiveMessage.SequenceNumber as Long[],
     );
   }
 }
